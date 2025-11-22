@@ -132,8 +132,11 @@
   </div>
 
   <script>
+    // Replace with your Cloudflare Worker or deployed backend URL:
+    const API_URL = "https://wine-ai-worker.cynthiacastaneda204.workers.dev/ai"; // <-- update this
+
     async function fetchAISummary(text) {
-      const response = await fetch("http://localhost:3000/ai", {
+      const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wineName: text })
