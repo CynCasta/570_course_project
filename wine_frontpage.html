@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FS47000 Wine Appreciation Project</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: #f8f4f0;
+      color: #6b1e23;
+      max-width: 800px;
+      margin: 2em auto;
+      padding: 2em;
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(107,30,35,0.10);
+      border: 2px solid #e0cfc2;
+    }
+    h1 {
+      color: #8b2331;
+      text-align: center;
+      letter-spacing: 1px;
+      margin-bottom: 0.5em;
+    }
+    p {
+      text-align: center;
+      color: #7a3b3b;
+      font-size: 1.1em;
+    }
+    #uploader-section, #ocr-section, #summary-section {
+      background: #fff8f6;
+      border: 1.5px solid #e0cfc2;
+      border-radius: 12px;
+      margin: 2em 0;
+      padding: 1.5em 2em;
+      box-shadow: 0 2px 12px rgba(107,30,35,0.04);
+    }
+    #uploader-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #fileInput {
+      margin-top: 1em;
+      padding: 0.5em;
+      border-radius: 6px;
+      border: 1px solid #bfa5a0;
+      background: #f3e6e3;
+      color: #6b1e23;
+      font-size: 1em;
+    }
+    #preview {
+      max-width: 320px;
+      margin-top: 1.5em;
+      border-radius: 10px;
+      border: 1.5px solid #bfa5a0;
+      box-shadow: 0 2px 8px rgba(107,30,35,0.08);
+      display: block;
+    }
+    #results {
+      margin-top: 1em;
+    }
+    .section-title {
+      color: #8b2331;
+      font-size: 1.2em;
+      margin-bottom: 0.7em;
+      border-bottom: 1px solid #e0cfc2;
+      padding-bottom: 0.3em;
+      letter-spacing: 0.5px;
+    }
+    pre {
+      background: #f3e6e3;
+      color: #6b1e23;
+      padding: 1em;
+      border-radius: 8px;
+      border: 1px solid #e0cfc2;
+      font-size: 1em;
+      overflow-x: auto;
+      margin-bottom: 1em;
+    }
+    .ai-summary-box {
+      background: #fbeeea;
+      border: 1.5px solid #e0cfc2;
+      border-radius: 10px;
+      padding: 1.2em;
+      margin-top: 1em;
+      color: #6b1e23;
+      font-size: 1.08em;
+      box-shadow: 0 2px 8px rgba(107,30,35,0.05);
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 0.5em;
+      }
+      #uploader-section, #ocr-section, #summary-section {
+        padding: 1em;
+      }
+      #preview {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>FS47000 Honors Project - Wine Label Detection</h1>
+  <p>Upload a wine label image - AI will detect the text and summarize important information related to topics learned about in class!</p>
+
+  <div id="uploader-section">
+    <span class="section-title">1. Upload Wine Label Image</span>
+    <input type="file" id="fileInput" accept="image/*" />
+    <img id="preview" style="display:none;" />
+    <div style="margin-top:0.7em; font-size:0.98em; color:#a05a5a; text-align:center;">
+      <em>Wine label text must be clearly visible for the AI to detect it.</em>
+    </div>
+  </div>
+
+  <div id="ocr-section" style="display:none;">
+    <span class="section-title">2. Detected Text</span>
+    <div id="ocr-text"></div>
+    <div style="margin-top:0.7em; font-size:0.98em; color:#a05a5a; text-align:center;">
+      <em>AI is not always able to detect text correctly. If there is any text you would like to change to make the results more accurate, please do so here. Otherwise, click the Generate Information button.</em>
+    </div>
+    <textarea id="manual-text" rows="5" style="width:100%; margin-top:1em; border-radius:8px; border:1px solid #e0cfc2; padding:0.7em; font-size:1em; font-family:'Georgia',serif; color:#6b1e23; background:#f3e6e3;"></textarea>
+    <button id="generate-info-btn" style="margin-top:1em; background:#8b2331; color:#fff8f6; border:none; border-radius:8px; padding:0.7em 1.5em; font-size:1.08em; cursor:pointer; font-family:'Georgia',serif; box-shadow:0 2px 8px rgba(107,30,35,0.08);">
+      Generate Information
+    </button>
+  </div>
+
+  <div id="summary-section" style="display:none;">
+    <span class="section-title">3. AI Wine Summary</span>
+    <div id="ai-summary"></div>
+  </div>
+
+  <script>
+    async function fetchAISummary(text) {
+      const response = await fetch("http://localhost:3000/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wineName: text })
+      });
+      const data = await response.json();
+      if (!data.choices || !data.choices[0]) throw new Error("No AI response received.");
+      return data.choices[0].message.content;
+    }
+
+    document.getElementById("fileInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Show image preview
+      const preview = document.getElementById("preview");
+      preview.style.display = "block";
+      preview.src = URL.createObjectURL(file);
+
+      // Reset sections
+      document.getElementById("ocr-section").style.display = "none";
+      document.getElementById("summary-section").style.display = "none";
+      document.getElementById("ocr-text").innerHTML = "";
+      document.getElementById("ai-summary").innerHTML = "";
+      document.getElementById("manual-text").value = "";
+
+      // OCR Section
+      document.getElementById("ocr-section").style.display = "block";
+      document.getElementById("ocr-text").innerHTML = "<em>Running OCR...</em>";
+
+      try {
+        const { data: { text } } = await Tesseract.recognize(file, "eng");
+        document.getElementById("ocr-text").innerHTML = `<pre>${text}</pre>`;
+        document.getElementById("manual-text").value = text;
+      } catch (err) {
+        document.getElementById("ocr-text").innerHTML = `<span style="color:red;">Error: ${err.message}</span>`;
+        document.getElementById("summary-section").style.display = "none";
+      }
+    });
+
+    document.getElementById("generate-info-btn").addEventListener("click", async () => {
+      const text = document.getElementById("manual-text").value.trim();
+      if (!text) {
+        document.getElementById("ai-summary").innerHTML =
+          `<div class="ai-summary-box" style="color:red;">Please enter or upload wine label text before generating the summary.</div>`;
+        document.getElementById("summary-section").style.display = "block";
+        return;
+      }
+      document.getElementById("summary-section").style.display = "block";
+      document.getElementById("ai-summary").innerHTML = "<em>Summarizing with AI...</em>";
+
+      try {
+        const summary = await fetchAISummary(text);
+        let summaryObj;
+        let cleaned = summary.trim();
+
+        // Remove code block markers if present
+        if (cleaned.startsWith("```json")) {
+          cleaned = cleaned.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+        } else if (cleaned.startsWith("```")) {
+          cleaned = cleaned.replace(/^```\s*/i, "").replace(/```$/, "").trim();
+        }
+
+        try {
+          summaryObj = JSON.parse(cleaned);
+        } catch {
+          // fallback: show as plain text if not valid JSON
+          document.getElementById("ai-summary").innerHTML =
+            `<div class="ai-summary-box">${summary}</div>`;
+          return;
+        }
+        document.getElementById("ai-summary").innerHTML = `
+          <div class="ai-summary-box"><b>🍷 General Summary:</b><br>${summaryObj.general_summary || ""}</div>
+          <div class="ai-summary-box"><b>🗺️ Geographical Region:</b><br>${summaryObj.geographical_region || ""}</div>
+          <div class="ai-summary-box"><b>🎎 Cultural Significance:</b><br>${summaryObj.cultural_significance || ""}</div>
+          <div class="ai-summary-box"><b>📜 Historical Significance:</b><br>${summaryObj.historical_significance || ""}</div>
+          <div class="ai-summary-box"><b>🍽️ Food Pairings:</b><br>${summaryObj.food_pairings || ""}</div>
+        `;
+      } catch (err) {
+        document.getElementById("ai-summary").innerHTML =
+          `<div class="ai-summary-box" style="color:red;">Error: ${err.message}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>
