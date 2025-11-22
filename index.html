@@ -4,26 +4,36 @@
 <meta charset="UTF-8">
 <title>FS47000 Wine Appreciation Project</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script type="module">
-  import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.0.0/dist/transformers.min.js";
+<script>
+  // Call the Gemini AI API via Netlify serverless function
+  window.generateAI = async function(text) {
+    try {
+      const response = await fetch("/api/generate-wine-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      });
 
-  window.loadModel = async function() {
-    // Load small GPT-style model
-    window.generator = await pipeline("text-generation", "Xenova/gpt-small");
-    console.log("Model loaded!");
-  };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate AI summary");
+      }
 
-  window.generateAI = async function(prompt) {
-    if (!window.generator) {
-      alert("AI model not loaded yet. Please wait a few seconds.");
-      return "Model not ready";
+      const data = await response.json();
+
+      // If the API returned raw_text instead of structured data
+      if (data.raw_text) {
+        return data.raw_text;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      throw error;
     }
-    const output = await window.generator(prompt, { max_new_tokens: 150 });
-    return output[0].generated_text;
   };
-
-  // Start loading model immediately
-  loadModel();
 </script>
 <style>
   body {
@@ -114,31 +124,26 @@ document.getElementById("generate-info-btn").addEventListener("click", async () 
   }
 
   document.getElementById("summary-section").style.display = "block";
-  document.getElementById("ai-summary").innerHTML = "<em>Summarizing with AI...</em>";
+  document.getElementById("ai-summary").innerHTML = "<em>Generating analysis with Gemini AI...</em>";
 
   try {
-    const summary = await window.generateAI(
-      `You are a sommelier AI. Output JSON with keys: "general_summary","geographical_region","cultural_significance","historical_significance","food_pairings". Each value is a short paragraph. Wine text:\n${text}`
-    );
+    const summaryObj = await window.generateAI(text);
 
-    // Parse JSON from AI output
-    let cleaned = summary.trim().replace(/```json|```/g, "");
-    let summaryObj;
-    try { summaryObj = JSON.parse(cleaned); } 
-    catch { summaryObj = null; }
-
-    if (!summaryObj) {
-      document.getElementById("ai-summary").innerHTML = `<div class="ai-summary-box">${summary}</div>`;
-      return;
+    // Check if it's an object with the expected structure
+    if (typeof summaryObj === 'object' && summaryObj.general_summary) {
+      document.getElementById("ai-summary").innerHTML = `
+        <div class="ai-summary-box"><b>🍷 General Summary:</b><br>${summaryObj.general_summary || ""}</div>
+        <div class="ai-summary-box"><b>🗺️ Geographical Region:</b><br>${summaryObj.geographical_region || ""}</div>
+        <div class="ai-summary-box"><b>🎎 Cultural Significance:</b><br>${summaryObj.cultural_significance || ""}</div>
+        <div class="ai-summary-box"><b>📜 Historical Significance:</b><br>${summaryObj.historical_significance || ""}</div>
+        <div class="ai-summary-box"><b>🍽️ Food Pairings:</b><br>${summaryObj.food_pairings || ""}</div>
+      `;
+    } else if (typeof summaryObj === 'string') {
+      // Fallback for raw text responses
+      document.getElementById("ai-summary").innerHTML = `<div class="ai-summary-box">${summaryObj}</div>`;
+    } else {
+      document.getElementById("ai-summary").innerHTML = `<div class="ai-summary-box">Received unexpected response format from AI.</div>`;
     }
-
-    document.getElementById("ai-summary").innerHTML = `
-      <div class="ai-summary-box"><b>🍷 General Summary:</b><br>${summaryObj.general_summary || ""}</div>
-      <div class="ai-summary-box"><b>🗺️ Geographical Region:</b><br>${summaryObj.geographical_region || ""}</div>
-      <div class="ai-summary-box"><b>🎎 Cultural Significance:</b><br>${summaryObj.cultural_significance || ""}</div>
-      <div class="ai-summary-box"><b>📜 Historical Significance:</b><br>${summaryObj.historical_significance || ""}</div>
-      <div class="ai-summary-box"><b>🍽️ Food Pairings:</b><br>${summaryObj.food_pairings || ""}</div>
-    `;
   } catch (err) {
     document.getElementById("ai-summary").innerHTML = `<div class="ai-summary-box" style="color:red;">Error: ${err.message}</div>`;
   }
