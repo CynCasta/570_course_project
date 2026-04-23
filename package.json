@@ -1,0 +1,11 @@
+{
+  "name": "wine-appreciation-project",
+  "version": "1.0.0",
+  "description": "Wine label detection and analysis using Gemini AI",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^2.8.2"
+  }
+}
