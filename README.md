@@ -91,6 +91,3 @@ The codebase for this project is built upon a foundational structure with severa
 *Note: There are no specific line numbers in this notebook that I am able to point out, but the functions are adapated to fit the objectives of this project.*
 
 The helper functions for signal generation (`generate_sine`, `generate_multi_tone`, `generate_chirp`, `generate_speech_like_signal`) and noise addition (`add_awgn`, `add_colored_noise`, `add_impulse_noise`), are adapted from a pre-existing project codebase. Similarly, the initial `DenoiseCNN` and `DenoiseDAE` model architectures and their respective training and evaluation paradigms (including the initial single-signal CNN training, diverse dataset training, and test set evaluations) are derived from the same prior work. The quantization and pruning sections also follow an adapted structure.
-
-**Original Code (written during this project session):**
-The markdown cells providing explanations, analysis, and this README itself are original contributions. The overall organization and flow of the notebook, including the specific sequence of tasks (data generation -> CNN training -> CNN evaluation -> CNN tuning -> DAE training -> DAE evaluation -> comprehensive comparisons), were structured during this project session to fulfill the project goals.
